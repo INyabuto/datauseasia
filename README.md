@@ -1,6 +1,6 @@
 # Introduction
 
-A simple descriptive analysis of partcipant's footprints for the Women's Health Project (WHP) data use workshop in ASIA. It answers key questions such as; 
+A simple descriptive analysis of participant's footprints for the Women's Health Project (WHP) data use workshop in ASIA. It answers the following key questions; 
 
 * which dashboards are mostly used?
 * What period do most use occur?
