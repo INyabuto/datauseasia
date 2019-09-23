@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1569241390460.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "4062538799",
+    "id" : "AEFE3F10",
+    "lastKnownWriteTime" : 1569253631,
+    "last_content_update" : 1569253631061,
+    "path" : "~/Documents/datauseAsia/inst/app/ui.R",
+    "project_path" : "inst/app/ui.R",
+    "properties" : {
+        "cursorPosition" : "13,34",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
