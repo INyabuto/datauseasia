@@ -22,3 +22,22 @@
 .info-box-number{
   color:#E08B38;
 }
+
+.well{
+  background-color:#52B6D9!important;
+}
+
+.main-header .logo{
+  background-color:#E08B38!important;
+}
+
+.main-header .navbar-static-top{
+  background-color:#E08B38!important;
+}
+
+.project-logo{
+  position: fixed;
+  bottom: 0px;
+  left: 0px;
+  width:125px;
+}
