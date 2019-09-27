@@ -7,7 +7,8 @@ shinydashboard::dashboardPage(
   sidebar = dashboardSidebar(
     width = sideBarWidth,
     shinyjs::useShinyjs(),
-    panelSelectInput()),                             #*
+    panelSelectInput(),
+    projectLogo()),                             #*
   body = dashboardBody(
     tags$head(
       tags$link(rel = "stylesheet",
@@ -15,7 +16,9 @@ shinydashboard::dashboardPage(
                 href = "stylesheet.css")
     ),
                        tabPanel("Workshop Level Analytics", value = "tab1",
-                                workshopLevelKpis()),
+                                workshopLevelKpis(),
+                                workshopRanking(),
+                                workshopTimeAnalysis()),
                        tabPanel("Individual Level Analytics", value = "tab2")
                        )
 
