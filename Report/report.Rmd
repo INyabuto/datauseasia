@@ -1,0 +1,223 @@
+---
+title: "Data Use Asia Participant's Footprint"
+author: "Isaiah Nyabuto, Et al."
+date: "10/14/2019"
+output: 
+ pdf_document:
+  toc: true
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+source("/Users/isaiahnyabuto/Documents/Workspace/utils.R")
+library(knitr)
+library(kableExtra)
+library(dplyr)
+library(plyr)
+
+baseurl <- "https://clone.psi-mis.org/"
+base <- substr(baseurl,9,25)
+usr <- keyringr::get_kc_account(base,type = "internet")
+pwd <- keyringr::decrypt_kc_pw(base, type = "internet")
+
+loginDHIS2(baseurl,usr,pwd)
+
+last_seen_interpretations <- function(x, baseurl){
+  r <- GET(URLencode(paste0(baseurl,"api/users?fields=lastCheckedInterpretations&filter=name:ilike:",x)))
+  last_seen <- fromJSON(content(r,"text"))$users
+  # if df is not null retun date
+  if (!empty(last_seen)){
+    last_seen$lastCheckedInterpretations
+  }else{
+    ""
+  }
+
+}
+
+last_login <- function(x,baseurl){
+  r <- GET(URLencode(paste0(baseurl,"api/users?fields=userCredentials[lastLogin,disabled]&filter=name:ilike:",x)))
+  dt <- fromJSON(content(r,"text"))$users$userCredentials
+  dt
+}
+
+last_login_date <- function(x, baseurl){
+  df <- last_login(x, baseurl)
+  
+  if (length(df) > 1) {
+    df$lastLogin
+  }else{
+    ""
+  }
+
+}
+
+
+account_status <- function(x, baseurl){
+  df <- last_login(x, baseurl)
+  
+  df$disabled
+  
+}
+
+user_groups <- function(x, baseurl){
+  r <- GET(URLencode(paste0(baseurl,"api/users?fields=userGroups[name]&filter=name:ilike:",x)))
+  u_groups <- fromJSON(content(r,"text"))$users$userGroups
+  # if u_groups is not nul
+  if (!is.null(u_groups)){
+    # covert df to a string
+    grp <- substring(as.character(u_groups), regexpr("['\"']", as.character(u_groups))+1)  
+    str_remove_all(grp,"[()\"']")
+  }else{
+    ""
+  }
+}
+
+dashboards <- function(x, baseurl){
+  r <- GET(URLencode(paste0(baseurl,"api/dashboards?fields=name&filter=userGroupAccesses.displayName:ilike:",x)))
+  dashboard <- fromJSON(content(r,"text"))$dashboards
+  # if dashboards is not null
+  if (!is.null(dashboard)){
+    # convert df to string
+    dash <- substring(as.character(dashboard), regexpr("['\"']", as.character(dashboard))+1)
+    str_remove_all(dash,"['()\"']")
+  }else{
+    ""
+  }
+}
+
+interpretation_count <- function(x, baseurl){
+  r <- GET(URLencode(paste0(baseurl,"api/interpretations.json?fields=name&filter=user.name:ilike:",x)))
+  interpretation  <- fromJSON(content(r,"text"))$interpretations
+  
+  interpretation <- Filter(length,interpretation)
+  
+  nrow(interpretation)
+  
+}
+
+
+
+```
+
+## User Profile
+
+```{r }
+ #mutate(`DHIS2 Account` = cell_spec(`DHIS2 Account`, "latex", color = ifelse(`DHIS2 Account` == "Nill", "red","black"))) %>% 
+participants <- readxl::read_xlsx("./datauseasia.xlsx", sheet = "Sheet1")
+
+user_profile <- participants %>% 
+  filter(`DHIS2 Account` != "Nill") %>%
+  mutate(`User Groups` = sapply(`DHIS2 Account`, function(x) user_groups(x,baseurl)))  %>%
+  mutate(`Last Checked Interpretations` = sapply(`DHIS2 Account`, function(x) last_seen_interpretations(x,baseurl))) %>%
+  arrange(desc(Name))
+
+user_profile %>%
+  select(-`Last Checked Interpretations`) %>%
+  kable("latex",booktabs = T, caption = sprintf("User Profile as at %s", Sys.time())) %>%
+  kable_styling(latex_options = c("repeat_header","HOLD_position","scale_down"), full_width = T, font_size = 6) %>% 
+  column_spec(1, width = "15em") %>%
+  column_spec(2, width = "10em") %>%
+  column_spec(3, width = "15em") %>%
+  column_spec(4, width = "20em")
+
+```
+
+## Login Report
+#### Top Most Active Users by Last Login
+```{r}
+# Get login report
+participants %>% 
+  filter(`DHIS2 Account` != "Nill") %>%
+  mutate(`Last Login1` = sapply(`DHIS2 Account`, function(x) last_login_date(x,baseurl))) %>%
+  mutate(`Account Disabled` = sapply(`DHIS2 Account`, function(x) account_status(x, baseurl))) %>%
+  mutate(`Last Login` = as.Date(`Last Login1`)) %>%
+  arrange(desc(`Last Login`)) %>%
+  mutate(Rank = c(1:nrow(.))) %>% 
+  select(Rank,Name,Country,`Last Login`) %>%  
+  filter(!is.na(`Last Login`)) %>% # remove nas
+  kable("latex", booktabs = T, escape = F, caption = sprintf("Top Most Active Users by Last Login as at %s", Sys.time())) %>% 
+  kable_styling(latex_options = c("striped","HOLD_position"),full_width = T)
+  
+```
+
+#### Least Active Users (Never logged in DHIS2)
+```{r}
+participants %>% 
+  filter(`DHIS2 Account` != "Nill") %>%
+  mutate(`Last Login1` = sapply(`DHIS2 Account`, function(x) last_login_date(x,baseurl))) %>%
+  mutate(`Account Disabled` = sapply(`DHIS2 Account`, function(x) account_status(x, baseurl))) %>%
+  mutate(`Last Login` = as.Date(`Last Login1`)) %>%
+  select(Name,Country,`DHIS2 Account`,`Last Login`) %>%
+  filter(is.na(`Last Login`)) %>%
+  arrange(desc(Name)) %>%
+  kable("latex", booktabs = T, escape = F, caption = sprintf("Least Active Users (Never logged in DHIS2) as at %s", Sys.time())) %>% 
+  kable_styling(latex_options = c("striped","HOLD_position"),full_width = T)
+```
+
+
+## Dashboard Report
+
+```{r}
+
+u_groups <- user_profile$`User Groups` %>%
+  paste0(.,collapse = ",") %>%
+  str_split(.,",") %>%
+  unlist(.) %>%
+  str_trim(.,side = "both") %>%
+  unique(.) %>% 
+  str_replace(.,"HSR - Users for USG FP compliance","HSR - Users (for USG FP compliance)") %>%
+  str_replace(.,"HSR - Users for USG FP NONE compliance","HSR - Users (for USG FP NONE compliance)")
+
+tibble(`User Groups` = u_groups) %>%
+  mutate(Dashboards = sapply(u_groups,function(x) dashboards(x,baseurl))) %>%
+  mutate(Dashboards = ifelse(Dashboards == "character(0)","",Dashboards)) %>%
+  arrange(desc(`User Groups`)) %>%
+  kable("latex",booktabs = T,longtable = T, linesep = "", caption = sprintf("Dashboards by User Group as at %s", Sys.time())) %>% kable_styling(font_size = 7, latex_options = "repeat_header") %>% column_spec(1, bold = T, width = "15em") %>% column_spec(2, width = "45em")
+#%>%
+  #kable_styling(latex_options = c("striped","HOLD_position"), full_width = T, font_size = 7)
+```
+
+## Interpretations Report
+#### Top Most Active Users by Date of Last Seen Interpretations
+```{r}
+
+user_profile %>% 
+  filter(`Last Checked Interpretations` != "") %>%
+  arrange(desc(`Last Checked Interpretations`)) %>%
+  mutate(Rank = 1:nrow(.)) %>%
+  mutate(`Last Checked Interpretations` = as.Date(`Last Checked Interpretations`)) %>%
+  select(Rank,Name,Country,`Last Checked Interpretations`) %>%
+  kable("latex", booktabs = T, escape = F, caption = sprintf("Top Most Active Users by Date of Last Seen Interpretations as at %s", Sys.time())) %>% 
+  kable_styling(latex_options = c("striped","HOLD_position"),full_width = T)
+```
+
+#### Least Active Users by Date of Last Seen Interpretations
+```{r}
+user_profile %>% 
+  filter(`Last Checked Interpretations` == "") %>%
+  arrange(desc(`Last Checked Interpretations`)) %>%
+  select(Name,Country,`Last Checked Interpretations`) %>%
+  kable("latex", booktabs = T, escape = F, caption = sprintf("Least Active Users by Date of Last Seen Interpretations as at %s", Sys.time())) %>% 
+  kable_styling(latex_options = c("striped","HOLD_position"),full_width = T)
+```
+
+#### Users with At Least 1 Interpretation by Rank
+```{r}
+user_profile %>% 
+  mutate(`Number of Interpretation` = sapply(`DHIS2 Account`, function(x) interpretation_count(x,baseurl))) %>%
+  select(`Number of Interpretation`) %>%
+  .$`Number of Interpretation` %>%
+  compact(.) %>%
+  tibble(name = names(.), count = .[names(.)]) %>% 
+  mutate(count = unlist(count)) %>%
+  select(-.) %>% 
+  arrange(desc(count)) %>% 
+  mutate(Rank = 1:nrow(.)) %>%
+  select(Rank,name,count) %>%
+  kable("latex", booktabs = T, escape = F, caption = sprintf("Users with At Least 1 Interpretation by Rank as at %s", Sys.time())) %>% 
+  kable_styling(latex_options = c("striped","HOLD_position"),full_width = T)
+  
+```
+

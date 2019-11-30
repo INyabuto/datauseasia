@@ -6,4 +6,6 @@ A simple descriptive analysis of participant's footprints for the Women's Health
 * What period do most use occur?
 * How has the use developed since the begining of the project?
 
+## UI
 
+<img src = "/Users/isaiahnyabuto/Documents/datauseAsia/inst/app/www/home.png">
