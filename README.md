@@ -8,4 +8,4 @@ A simple descriptive analysis of participant's footprints for the Women's Health
 
 ## UI
 
-<img src = "/Users/isaiahnyabuto/Documents/datauseAsia/inst/app/www/home.png">
+<img src = "./inst/app/www/home.png">
